@@ -1,5 +1,6 @@
 # Statics
 import numpy as np
+import click
 '''
 #########################################
 TO DO LIST
@@ -10,8 +11,9 @@ TO DO LIST
 - add systems of eq solver
 
 '''
-
-
+@click.group()
+def cli():
+    pass
 
 class Resultant_System():
     def __init__(self, dim, origin=(0,0,0)):
@@ -49,9 +51,40 @@ class Resultant_System():
     def simplify_system(self):
         pass
 
+def type_changer(input, desired):
+    t = type(input)
+    # print('in type changer:\nInput is ==%s==\nType of input:%s\nDesired Output: %s'% (input, t, desired))
 
+    if t != desired:
+        if t == str and desired == list:
+            output = [int(i) for i in input.split(',')]
+        elif t == str and desired == int:
+            return int(input)
+        elif t == list and desired == np.ndarray:
+            output = np.array(input, dtype=float)
+        elif t == str and desired == np.ndarray:
+            output = np.array([int(i) for i in input.split(',')])
+        return output
+    else:
+        return input
+
+
+@cli.command()
+@click.option('--t', help='The angle that would make the x component of force related to cosine')
+@click.option('--mag', help='the magnitude of the vector')
+@click.argument('xsign',required= False)
+@click.argument('ysign', required=False)
+@click.argument('dim', required=False)
+def resolve(t, mag, xsign=1, ysign=1, dim=2):
+    click.echo(resolve_force(t, mag, xsign, ysign, dim))
 
 def resolve_force(interior_angle, magnitude, xsign=1, ysign=1, dim=2):
+    interior_angle = type_changer(interior_angle, int)
+    magnitude = type_changer(magnitude, int)
+    xsign = type_changer(xsign, int)
+    ysign = type_changer(ysign, int)
+    dim = type_changer(dim, int)
+
     from math import sin,cos
     if dim == 2:
         x = cos(interior_angle) * magnitude * xsign
@@ -61,10 +94,22 @@ def resolve_force(interior_angle, magnitude, xsign=1, ysign=1, dim=2):
     else:
         print ('resolve force: 3d has not yet been configured')
 
+
+@cli.command()
+@click.argument('r1')
+@click.argument('r2')
+@click.argument('r3', default=False)
+def cross(r1, r2, r3):
+    click.echo(cross_product(r1,r2,r3))
+
 def cross_product(row_1, row_2, row_3=False):
+    row_1 = type_changer(row_1, list)
+    row_2 = type_changer(row_2, list)
+
     row_1 = np.array(row_1).transpose()
     row_2 = np.array(row_2).transpose()
     if row_3:
+        row_3 = type_changer(row_3, list)
         row_3 = np.array(row_3).transpose()
 
         product = np.cross(row_2, row_3)
@@ -72,46 +117,83 @@ def cross_product(row_1, row_2, row_3=False):
 
     else:
         product = np.cross(row_1, row_2)
-
     # returns numpy array
     return product
 
 
+@cli.command()
+@click.argument('initial')#, help = 'the starting point for teh position vector')
+@click.argument('terminal')#, help = 'the end point for the position vector')
+def rvec(i, t):
+    click.echo(position_vector(i,t))
+
 def position_vector(initial, terminal):
-    i = np.array(initial)
-    t = np.array(terminal)
+    # change any potential input into a numpy array (string / list possible)
+    i = type_changer(initial, np.ndarray)
+    t = type_changer(initial, np.ndarray)
 
     r = t - i
-    
     # returns a numpy array
     return r
+
+
+@cli.command()
+@click.argument('r1')
+@click.argument('r2')
+def dot(r1, r2):
+    click.echo(dot_product(r1, r2))
+
 def dot_product(row1,row2):
-    if type(row1) != np.ndarray:
-        row1 = np.array(row1)
-    if type(row2) != np.ndarray:
-        row2 = np.array(row2)
+    row1 = type_changer(row1, np.ndarray)
+    row2 = type_changer(row2, np.ndarray)
+
     dot = np.dot(row1, row2)
     return dot
 
+
+@cli.command()
+@click.argument('vec')
+def mag(vec):
+    click.echo(vector_magnitude(vec))
+
 def vector_magnitude(vector):
     import math
+    vector = type_changer(vector, np.ndarray)
     total = 0
+
     for index in vector:
         total += index ** 2
 
     # returns a constant
-    return math.sqrt(total)
+    result = math.sqrt(total)
+    click.echo('the magnitude is: %s' % result)
+    return result
 
+@cli.command()
+@click.argument('vec')
+def unit(vec):
+    click.echo(unit_vector(vec))
 
 def unit_vector(input_vector):
-    if type(input_vector) == list:
-        print('unit vector: chaning to numpy')
-        input_vector = np.array(input_vector)
+    input_vector = (input_vector, np.ndarray)
 
     u = input_vector / vector_magnitude(input_vector)
 
     # returns a numpy array
     return u
+
+
+@cli.command()
+@click.option('--fvec', default=False, help='this is the force vector')
+@click.option('--fs', default=False, help='starting point of the force vector')
+@click.option('--fe', default=False, help='ending point of the force vector')
+@click.option('--fmag', default=False, help='the magnitud of the vector')
+@click.option('--funit', default=False, help='the magnitud of the vector')
+@click.option('--rs', default=False, help='the starting point of the position vector from the point to the force')
+@click.option('--re', default=False, help='the ending point ofthe position vector to  the point on the force')
+@click.option('--rvec', default=False, help='the full position vector from the point to the force')
+def d3tor(fvec, fs, fe, fmag, funit, rs, re, rvec):
+    click.echo(d3_moment(fvec, fs, fe, fmag, funit, rs, re, rvec))
 
 def d3_moment(F_vector=False, F_start=False, F_end=False, F_mag=False, F_unit=False, position_start=False, position_end=False, r_vector=False):
     if F_start and not position_end:
@@ -119,17 +201,13 @@ def d3_moment(F_vector=False, F_start=False, F_end=False, F_mag=False, F_unit=Fa
     elif position_end and not F_start:
         F_start = position_end
 
-
-    if type(r_vector) == list:
-        r_vector = np.array(r_vector)
-    if type(F_vector) == list:
-        F_vector = np.array(F_vector)
-
+    r_vector = type_changer(r_vector, list)
+    F_vector = type_changer(F_vector, list)
 
     if position_start and position_end:
         r_vector = position_vector(position_start, position_end)
     if F_start and F_end and F_mag:
-        # this should probably be a numpy array i think
+        # this should probably be a numpy array i think uuuuhhhh im not too sure though figure that shit out
         F_vector = F_mag * unit_vector(position_vector(F_start, F_end))
     if F_mag and F_unit:
         if type(F_unit) == list:
@@ -145,6 +223,17 @@ def d3_moment(F_vector=False, F_start=False, F_end=False, F_mag=False, F_unit=Fa
     moment = np.cross(r_vector.transpose(), F_vector.transpose())
     
     return moment
+
+
+@cli.command()
+@click.option('--point', default=[0,0,0], help='the point that the moment is being calculated around ')
+@click.option('--fs', default=False, help='the start of the force vector')
+@click.option('--fe', default=False, help='ending point of the force vector')
+@click.option('--fvec', default=False, help='this is the force vector')
+@click.option('--fmag', default=False, help='this is the force vector')
+@click.option('--dir', default=False, help='the direction that the moment is being calculated in, default ccw')
+def d2_tor(point, fs, fe, fvec,fmag, dir):
+    click.echo(d2_moment(point, fs, fe, fvec,fmag, dir))
 
 def d2_moment(about_point=False, F_start=False, F_end=False, F_vector=False,F_mag=False, dir=False):
     if not F_vector:
@@ -171,6 +260,20 @@ def d2_moment(about_point=False, F_start=False, F_end=False, F_vector=False,F_ma
         print('unknown value of dir. It should either be ccw or cw. It is assumed to be ccw')
     return moment
 
+@cli.command()
+@click.option('--a_s', default=False, help = 'the starting point of the axis of rotation')
+@click.option('--a_e', default=False, help = 'the ending point of the axis of rotation')
+@click.option('--aunit', default=False, help = 'the unit vecotr for the axis of rotaiton')
+@click.option('--fvec', default=False, help = 'the force vector that is being used for the calculation')
+@click.option('--fs', default=False, help = 'the starting point of the force vector being used')
+@click.option('--fe', default=False, help = 'the ending point of the force vector being used')
+@click.option('--fmag', default=False, help = 'the magnitude of the force vector')
+@click.option('--funit', default=False, help = 'the unit vector of the force')
+@click.option('--rs', default=False, help = 'the starting point of the position vector(on the axis)')
+@click.option('--re', default=False, help = 'the ending point ofhte position vector(on the force)')
+@click.option('--rvec', default=False, help = 'the position vector (from the axis to the force)')
+def axis(a_s, a_e, aunit ,fvec, fs, fe, fmag, funit, rs, re, rvec):
+    click.echo(axis_moment(a_s, a_e, a_unit,f_vec, f_s, f_e, f_mag, f_unit, r_s, r_e, r_vec))
 
 def axis_moment(axis_start=False, axis_end=False, axis_unit_vector=False,F_vector=False, F_start=False, F_end=False, F_mag=False, F_unit=False, position_start=False, position_end=False, r_vector=False):
     if not axis_unit_vector:
@@ -184,6 +287,16 @@ def axis_moment(axis_start=False, axis_end=False, axis_unit_vector=False,F_vecto
     result_axis_moment = np.dot(axis_unit_vector, moment)
 
     return result_axis_moment
+@cli.command()
+@click.option('--fvec', default=False, help ='the force vector being used')
+@click.option('--fs', default=False, help =' the starting point of the force vector')
+@click.option('--fe', default=False, help ='the ending point of the force vector')
+@click.option('--negfs', default=False, help ='the starting point of the negative force vector')
+@click.option('--fmag', default=False, help ='the magnitude of the force vector')
+@click.option('--rvec', default=False, help ='the position vector (from -F to +F)')
+@click.option('--funit', default=False, help ='the unit vector of the force being used')
+def d3couple(fvec, fs, fe, negfs,fmag, rvec, funit):
+    click.echo(d3_couple_moment(fvec, fs, fe, negfs,fmag, rvec, funit))
 
 def d3_couple_moment(F_vector=False, F_start=False, F_end=False, neg_F_start=False,F_mag=False, r_vector=False, F_unit=False):
     if type(r_vector) == list:
@@ -203,6 +316,13 @@ def d3_couple_moment(F_vector=False, F_start=False, F_end=False, neg_F_start=Fal
     moment = np.cross(r_vector, F_vector)
     return moment
 
+
+@cli.command()
+@click.argument('d')
+@click.argument('fmag')
+def d2couple(d,fmag):
+    click.echo(d2_couple_moment(d,fmag))
+
 def d2_couple_moment(d=False, F_mag=False):
     if not d and not F_mag:
         print('there is not enough intomation to slove the 2d couple moment')
@@ -211,5 +331,5 @@ def d2_couple_moment(d=False, F_mag=False):
     return moment
 
 if __name__ =='__main__':
-    x = dot_product([1,2,2,],[3,3,1])
-    print(x)
+    cli()
+    # resolve_force(interior_angle='54', magnitude='21')
