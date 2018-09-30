@@ -53,7 +53,10 @@ class Resultant_System():
 
 def type_changer(input, desired):
     t = type(input)
-    # print('in type changer:\nInput is ==%s==\nType of input:%s\nDesired Output: %s'% (input, t, desired))
+    print('in type changer:\nInput is ==%s==\nType of input:%s\nDesired Output: %s\n\n' % (input, t, desired))
+
+    if t == bool:
+        return input
 
     if t != desired:
         if t == str and desired == list:
@@ -64,6 +67,8 @@ def type_changer(input, desired):
             output = np.array(input, dtype=float)
         elif t == str and desired == np.ndarray:
             output = np.array([int(i) for i in input.split(',')])
+        elif t == tuple and desired == np.ndarray:
+            return np.array(input)
         return output
     else:
         return input
@@ -72,14 +77,16 @@ def type_changer(input, desired):
 @cli.command()
 @click.option('--t', help='The angle that would make the x component of force related to cosine')
 @click.option('--mag', help='the magnitude of the vector')
-@click.argument('xsign',required= False)
-@click.argument('ysign', required=False)
-@click.argument('dim', required=False)
+@click.argument('xsign',default= 1)
+@click.argument('ysign', default=1)
+@click.argument('dim', default=2)
 def resolve(t, mag, xsign=1, ysign=1, dim=2):
     click.echo(resolve_force(t, mag, xsign, ysign, dim))
 
 def resolve_force(interior_angle, magnitude, xsign=1, ysign=1, dim=2):
+    print ('int angle')
     interior_angle = type_changer(interior_angle, int)
+    print('magnitude')
     magnitude = type_changer(magnitude, int)
     xsign = type_changer(xsign, int)
     ysign = type_changer(ysign, int)
@@ -122,8 +129,8 @@ def cross_product(row_1, row_2, row_3=False):
 
 
 @cli.command()
-@click.argument('initial')#, help = 'the starting point for teh position vector')
-@click.argument('terminal')#, help = 'the end point for the position vector')
+@click.argument('i')#, help = 'the starting point for teh position vector')
+@click.argument('t')#, help = 'the end point for the position vector')
 def rvec(i, t):
     click.echo(position_vector(i,t))
 
@@ -166,7 +173,6 @@ def vector_magnitude(vector):
 
     # returns a constant
     result = math.sqrt(total)
-    click.echo('the magnitude is: %s' % result)
     return result
 
 @cli.command()
@@ -175,7 +181,7 @@ def unit(vec):
     click.echo(unit_vector(vec))
 
 def unit_vector(input_vector):
-    input_vector = (input_vector, np.ndarray)
+    input_vector = type_changer(input_vector, np.ndarray)
 
     u = input_vector / vector_magnitude(input_vector)
 
@@ -201,8 +207,8 @@ def d3_moment(F_vector=False, F_start=False, F_end=False, F_mag=False, F_unit=Fa
     elif position_end and not F_start:
         F_start = position_end
 
-    r_vector = type_changer(r_vector, list)
-    F_vector = type_changer(F_vector, list)
+    r_vector = type_changer(r_vector, np.ndarray)
+    F_vector = type_changer(F_vector, np.ndarray)
 
     if position_start and position_end:
         r_vector = position_vector(position_start, position_end)
@@ -230,12 +236,23 @@ def d3_moment(F_vector=False, F_start=False, F_end=False, F_mag=False, F_unit=Fa
 @click.option('--fs', default=False, help='the start of the force vector')
 @click.option('--fe', default=False, help='ending point of the force vector')
 @click.option('--fvec', default=False, help='this is the force vector')
-@click.option('--fmag', default=False, help='this is the force vector')
+@click.option('--fmag', default=False, help='this is the force vector magnitude')
 @click.option('--dir', default=False, help='the direction that the moment is being calculated in, default ccw')
-def d2_tor(point, fs, fe, fvec,fmag, dir):
+def d2tor(point, fs, fe, fvec,fmag, dir):
     click.echo(d2_moment(point, fs, fe, fvec,fmag, dir))
 
 def d2_moment(about_point=False, F_start=False, F_end=False, F_vector=False,F_mag=False, dir=False):
+    if about_point:
+        about_point = type_changer(about_point,list)
+    if F_start:
+        F_start = type_changer(F_start, list)
+    if F_end:
+        F_end = type_changer(F_end, int)
+    if F_vector:
+        F_vector = type_changer(F_vector, list)
+    if F_mag:
+        F_mag = type_changer(F_mag, int)
+
     if not F_vector:
         if F_start and F_end and F_mag:
             F_vector = unit_vector(position_vector(F_start,F_end)) * F_mag
@@ -273,10 +290,44 @@ def d2_moment(about_point=False, F_start=False, F_end=False, F_vector=False,F_ma
 @click.option('--re', default=False, help = 'the ending point ofhte position vector(on the force)')
 @click.option('--rvec', default=False, help = 'the position vector (from the axis to the force)')
 def axis(a_s, a_e, aunit ,fvec, fs, fe, fmag, funit, rs, re, rvec):
-    click.echo(axis_moment(a_s, a_e, a_unit,f_vec, f_s, f_e, f_mag, f_unit, r_s, r_e, r_vec))
+    click.echo(axis_moment(a_s, a_e, aunit ,fvec, fs, fe, fmag, funit, rs, re, rvec))
 
 def axis_moment(axis_start=False, axis_end=False, axis_unit_vector=False,F_vector=False, F_start=False, F_end=False, F_mag=False, F_unit=False, position_start=False, position_end=False, r_vector=False):
-    if not axis_unit_vector:
+    if axis_start:
+        print(1)
+        axis_start = type_changer(axis_start, np.ndarray)
+    if axis_end:
+        print(2)
+        axis_end = type_changer(axis_end, np.ndarray)
+    if axis_unit_vector:
+        print(3)
+        axis_unit_vector = type_changer(axis_unit_vector, np.ndarray)
+    if F_vector:
+        print(4)
+        F_vector = type_changer(F_vector, np.ndarray)
+    if F_start:
+        print(5)
+        F_start = type_changer(F_start, np.ndarray)
+    if F_end:
+        print(6)
+        F_end = type_changer(F_end, np.ndarray)
+    if F_mag:
+        print(7)
+        F_mag = type_changer(F_mag, int)
+    if F_unit:
+        print(8)
+        F_unit = type_changer(F_unit, np.ndarray)
+    if position_start:
+        print(9)
+        position_start = type_changer(position_start, np.ndarray)
+    if position_end:
+        print(10)
+        position_end = type_changer(position_end, np.ndarray)
+    if r_vector:
+        print(11)
+        r_vector = type_changer(r_vector, np.ndarray)
+
+    if not axis_unit_vector.any():
         if axis_start and axis_end:
             axis_unit_vector = unit_vector(position_vector(axis_start, axis_end))
         else:
